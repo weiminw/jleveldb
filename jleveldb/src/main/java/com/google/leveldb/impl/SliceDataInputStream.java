@@ -17,8 +17,8 @@ public final class SliceDataInputStream extends InputStream implements DataInput
 	@Override
 	public void readFully(byte[] b) throws IOException {
 		// TODO Auto-generated method stub
-		for(byte dd:b){
-			dd = slice.getBytes()[this.position++];
+		for (int i=0;i<b.length;i++){
+			b[i] = slice.getBytes()[this.position++];
 		}
 	}
 
@@ -110,6 +110,12 @@ public final class SliceDataInputStream extends InputStream implements DataInput
 	public int read() throws IOException {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	@Override
+	public int available() throws IOException {
+		// TODO Auto-generated method stub
+		return this.slice.length() - this.position;
 	}
 
 }
