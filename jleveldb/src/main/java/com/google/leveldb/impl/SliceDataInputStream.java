@@ -4,7 +4,7 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.google.leveldb.Slice;
+import com.google.leveldb.utils.Slice;
 
 public final class SliceDataInputStream extends InputStream implements DataInput {
 	private final Slice slice;

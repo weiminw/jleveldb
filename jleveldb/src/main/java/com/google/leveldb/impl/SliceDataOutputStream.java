@@ -4,7 +4,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import com.google.leveldb.Slice;
+import com.google.leveldb.utils.Slice;
 
 public class SliceDataOutputStream extends OutputStream implements DataOutput {
 

@@ -1,21 +1,24 @@
 package com.google.leveldb.impl;
 
 
+import java.awt.List;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.leveldb.LogChunkType;
 import com.google.leveldb.LogWriter;
-import com.google.leveldb.Slice;
+import com.google.leveldb.utils.Slice;
 
 import static com.google.leveldb.LogConstants.BLOCK_SIZE;
 import static com.google.leveldb.LogConstants.HEADER_SIZE;
@@ -99,16 +102,7 @@ public class MMapLogWriter implements LogWriter {
 	private Slice createLogRecordHeader(LogChunkType type, Slice slice)
     {
         int crc = getChunkChecksum(type.getTypeValue(), slice, slice.getRawOffset(), slice.length());
-
-        // Format the header
-        Slice header = Slice.newSlice(HEADER_SIZE);
-        SliceDataOutputStream sliceOutput = new SliceDataOutputStream(header);
-        sliceOutput.writeInt(crc);
-        sliceOutput.writeByte((byte) (slice.length() & 0xff));
-        sliceOutput.writeByte((byte) (slice.length() >>> 8));
-        sliceOutput.writeByte((byte) (type.getPersistentId()));
-
-        return header;
+        return Slice.newLogHeaderSlice(crc, slice,type);
     }
 	
 	
