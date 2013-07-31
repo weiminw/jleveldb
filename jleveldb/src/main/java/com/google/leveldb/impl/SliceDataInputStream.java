@@ -4,11 +4,17 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.google.leveldb.utils.Slice;
 
-public final class SliceDataInputStream extends InputStream implements DataInput {
+public final class SliceDataInputStream extends InputStream implements
+		DataInput {
 	private final Slice slice;
 	private int position = 0;
+	private Logger logger = LogManager.getLogger(SliceDataInputStream.class);
+
 	public SliceDataInputStream(Slice slice) {
 		// TODO Auto-generated constructor stub
 		this.slice = slice;
@@ -17,7 +23,7 @@ public final class SliceDataInputStream extends InputStream implements DataInput
 	@Override
 	public void readFully(byte[] b) throws IOException {
 		// TODO Auto-generated method stub
-		for (int i=0;i<b.length;i++){
+		for (int i = 0; i < b.length; i++) {
 			b[i] = slice.getBytes()[this.position++];
 		}
 	}
@@ -116,6 +122,14 @@ public final class SliceDataInputStream extends InputStream implements DataInput
 	public int available() throws IOException {
 		// TODO Auto-generated method stub
 		return this.slice.length() - this.position;
+	}
+
+	public Slice readSlice(int fragmentLength) {
+		// TODO Auto-generated method stub
+		Slice slice = this.slice.slice(this.position, fragmentLength);
+		this.position += fragmentLength;
+		return slice;
+
 	}
 
 }

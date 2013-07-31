@@ -14,11 +14,19 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.Files;
 import com.google.leveldb.LogChunkType;
 import com.google.leveldb.LogWriter;
 import com.google.leveldb.utils.Slice;
+import com.google.leveldb.Logs;
 
 import static com.google.leveldb.LogConstants.BLOCK_SIZE;
 import static com.google.leveldb.LogConstants.HEADER_SIZE;
@@ -27,6 +35,7 @@ public class MMapLogWriter implements LogWriter {
 	private final FileChannel fileChannel;
 	private final AtomicBoolean closed = new AtomicBoolean();
 	private MappedByteBuffer mappedByteBuffer;
+	private Logger logger = LogManager.getLogger(MMapLogWriter.class);
 	/**
      * Current offset in the current block
      */
@@ -44,7 +53,6 @@ public class MMapLogWriter implements LogWriter {
 		// used to track first, middle and last blocks
         boolean begin = true;
         SliceDataInputStream sliceInput = new SliceDataInputStream(record);
-        System.out.println(sliceInput.available());
         do {
             int bytesRemainingInBlock = BLOCK_SIZE - blockOffset;
             Preconditions.checkState(bytesRemainingInBlock >= 0);
@@ -53,18 +61,18 @@ public class MMapLogWriter implements LogWriter {
             	blockOffset = 0;
                 bytesRemainingInBlock = BLOCK_SIZE - blockOffset;
             }
-            
             int bytesAvailableInBlock = bytesRemainingInBlock - HEADER_SIZE;
             Preconditions.checkState(bytesAvailableInBlock >= 0);
             boolean end = false;
             int fragmentLength = 0;
-            if(record.length()>bytesAvailableInBlock){
+            
+            if(sliceInput.available()>bytesAvailableInBlock){
             	end = false;
             	fragmentLength = bytesAvailableInBlock;
             }
             else {
             	end = false;
-            	fragmentLength = record.length();
+            	fragmentLength = sliceInput.available();
             }
             // determine block type
             LogChunkType type;
@@ -81,9 +89,9 @@ public class MMapLogWriter implements LogWriter {
                 type = LogChunkType.MIDDLE;
             }
             // write log chunk;
-            byte[] chunck = new byte[fragmentLength];
-            sliceInput.readFully(chunck);
-            writeLogChunk(type, chunck);
+            Slice chunkSlice = sliceInput.readSlice(fragmentLength);
+            writeLogChunk(type, chunkSlice);
+            this.blockOffset = HEADER_SIZE+chunkSlice.length();
             begin = false;
         }
         while(sliceInput.available()>0);
@@ -91,17 +99,18 @@ public class MMapLogWriter implements LogWriter {
             
 	}
 
-	private void writeLogChunk(LogChunkType type, byte[] chunck) {
+	private void writeLogChunk(LogChunkType type, Slice chunckSlice) {
 		// TODO Auto-generated method stub
-		System.out.println(String.valueOf(chunck));
-		this.mappedByteBuffer.put(chunck);
+		Slice headerSlice = this.createLogRecordChunkHeader(type, chunckSlice);
+		this.mappedByteBuffer.put(headerSlice.getBytes());
+		this.mappedByteBuffer.put(chunckSlice.getBytes());
 		
 		
 	}
 	
-	private Slice createLogRecordHeader(LogChunkType type, Slice slice)
+	private Slice createLogRecordChunkHeader(LogChunkType type, Slice slice)
     {
-        int crc = getChunkChecksum(type.getTypeValue(), slice, slice.getRawOffset(), slice.length());
+		int crc = Logs.getChunkCheckSum(type.getTypeValue(), slice.getRawBytes(), slice.getRawOffset(), slice.length());
         return Slice.newLogHeaderSlice(crc, slice,type);
     }
 	
@@ -114,7 +123,9 @@ public class MMapLogWriter implements LogWriter {
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
 		LogWriter logWriter = new  MMapLogWriter(new File("/home/weiminw/test.txt"),1);
-		logWriter.addRecord(new LogSlice("111111111"));
+		File file = new File("/home/weiminw/velocity.log");
+		
+		logWriter.addRecord(Slice.of(Joiner.on(',').join(Files.readLines(file, Charsets.UTF_8))));
 	}
 
 }

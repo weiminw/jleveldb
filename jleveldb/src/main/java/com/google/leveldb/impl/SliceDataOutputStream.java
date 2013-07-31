@@ -1,3 +1,4 @@
+
 package com.google.leveldb.impl;
 
 import java.io.DataOutput;

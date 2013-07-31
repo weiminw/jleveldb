@@ -1,11 +1,13 @@
 package com.google.leveldb.impl;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import com.google.leveldb.DB;
 import com.google.leveldb.LogWriter;
 
 public class DBImpl implements DB {
 	LogWriter logWriter = null;
-	
+	private final ReentrantLock mutex = new ReentrantLock();
 	public DBImpl(){
 		
 	}
@@ -16,7 +18,8 @@ public class DBImpl implements DB {
 	}
 	
 	protected void writeInternal(){
-		
+		// check background
+		mutex.lock();
 	}
 
 	

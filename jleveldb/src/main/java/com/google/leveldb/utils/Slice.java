@@ -1,7 +1,7 @@
 package com.google.leveldb.utils;
 
-import java.io.DataOutput;
-import java.io.IOException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -13,14 +13,20 @@ import com.google.leveldb.LogChunkType;
 import static com.google.leveldb.LogConstants.HEADER_SIZE;
 
 public final class Slice {
+	private Logger logger = LogManager.getLogger(Slice.class);
 	private ImmutableList<Byte> rawData;
-	private int offset = 0;
-	private final int length;
+	private int length;
+	private int offset;
 
 	private Slice(byte[] data) {
 		this.rawData = ImmutableList.copyOf(Bytes.asList(data));
 		this.length = this.rawData.size();
 
+	}
+	private Slice(ImmutableList<Byte> data,int offset, int fragmentLength){
+		this.rawData = data;
+		this.offset = offset;
+		this.length = fragmentLength;
 	}
 
 	public static Slice newLogHeaderSlice(int crc, Slice slice, LogChunkType type) {
@@ -41,18 +47,17 @@ public final class Slice {
 	public static Slice of(byte[] data) {
 		return new Slice(data);
 	}
+	
 
-	public byte[] getRawBytes() {
-		return this.getBytes(0, length);
-	}
+
 
 	public byte[] getBytes() {
-		return this.getBytes(this.offset, this.length);
+		return this.getBytes(0, this.length);
 	}
 
 	public byte[] getBytes(int index, int length) {
 		index += this.offset;
-		Preconditions.checkPositionIndex(index, this.length);
+		Preconditions.checkPositionIndex(index, this.rawData.size());
 		return Bytes.toArray(this.rawData.asList());
 	}
 
@@ -61,9 +66,21 @@ public final class Slice {
 		return this.length;
 	}
 
-	public static Builder builder(int capability) {
+	public byte[] getRawBytes() {
 		// TODO Auto-generated method stub
-		return new Builder(capability);
+		return Bytes.toArray(this.rawData);
 	}
+
+	public int getRawOffset() {
+		// TODO Auto-generated method stub
+		return this.offset;
+	}
+
+	public Slice slice(int offset,int fragmentLength) {
+		// TODO Auto-generated method stub
+		return new Slice(this.rawData,offset,fragmentLength);
+	}
+
+
 
 }

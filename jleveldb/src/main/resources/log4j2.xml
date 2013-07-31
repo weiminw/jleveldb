@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="INFO">
+  <appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%-5level] %l - %msg%n"/>
+    </Console>
+    <RollingFile name="RollingFile" fileName="logs/scheduler.log"    
+                 filePattern="logs/scheduler-%i.log">    
+      <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%-5level] %l - %msg%n"/>
+      <SizeBasedTriggeringPolicy size="1 MB" />    
+    </RollingFile>  
+  </appenders>
+  <loggers>
+    <root level="debug">
+      <appender-ref ref="Console"/>
+      <appender-ref ref="RollingFile"/>
+    </root>
+  </loggers>
+</configuration>
