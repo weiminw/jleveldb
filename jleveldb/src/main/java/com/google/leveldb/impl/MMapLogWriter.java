@@ -1,6 +1,4 @@
 package com.google.leveldb.impl;
-
-
 import java.awt.List;
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -20,61 +18,83 @@ import org.apache.logging.log4j.Logger;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import com.google.common.io.Files;
 import com.google.leveldb.LogChunkType;
 import com.google.leveldb.LogWriter;
 import com.google.leveldb.utils.Slice;
 import com.google.leveldb.Logs;
-
 import static com.google.leveldb.LogConstants.BLOCK_SIZE;
 import static com.google.leveldb.LogConstants.HEADER_SIZE;
+/**
+ * 基于内存映射方式写Log
+ * @author william.wangwm
+ *
+ */
 public class MMapLogWriter implements LogWriter {
-	private final static int PAGE_SIZE = 1024 * 1024;
-	private final FileChannel fileChannel;
-	private final AtomicBoolean closed = new AtomicBoolean();
-	private MappedByteBuffer mappedByteBuffer;
 	private Logger logger = LogManager.getLogger(MMapLogWriter.class);
+	/*
+	 * 每次从LOG文件映射到内存的大小。ldb源码采用小于1M的时候，翻倍扩展的方式，32K,64K,128K...1M
+	 */
+	private final static int PAGE_SIZE = 1>>>20; // 1M
+	/*
+	 * 从日志文件映射到内存的Buffer.每次大小为1M
+	 */
+	private MappedByteBuffer mappedByteBuffer; 
+	private final AtomicBoolean closed = new AtomicBoolean();
+	private final FileChannel fileChannel;
+	/*
+	 * 映射内存时，映射起始位置对应于日志文件的位置.
+	 */
+	private int fileOffset = 0;
 	/**
-     * Current offset in the current block
+     * 没条日志记录在日志BLOCK中的偏移量. 每个block为 32K
      */
-    private int blockOffset;
+    private int blockOffset = 0;
+    /**
+     * 构造函数.每次执行都会有一个fileNumber, fileNumber决定了最新的log文件。这个数字在MF维护
+     * @param file
+     * @param fileNumber
+     * @throws IOException
+     */
 	public MMapLogWriter(File file, long fileNumber) throws IOException {
 		Preconditions.checkNotNull(file, "file is null");
         Preconditions.checkArgument(fileNumber >= 0, "fileNumber is negative");
 		this.fileChannel = new RandomAccessFile(file, "rw").getChannel();
-		mappedByteBuffer = fileChannel.map(MapMode.READ_WRITE, 0, PAGE_SIZE);
+		mappedByteBuffer = fileChannel.map(MapMode.READ_WRITE, fileOffset, PAGE_SIZE);
 	}
-
+	/**
+	 * 写入记录到日志系统。
+	 * 假设记录很大，每次从slice 里面读取不超过32K 的数据，然后写到处理后写到log中。
+	 */
 	@Override
 	public void addRecord(Slice record) throws IOException {
-		// TODO Auto-generated method stub
 		// used to track first, middle and last blocks
         boolean begin = true;
         SliceDataInputStream sliceInput = new SliceDataInputStream(record);
         do {
-            int bytesRemainingInBlock = BLOCK_SIZE - blockOffset;
-            Preconditions.checkState(bytesRemainingInBlock >= 0);
-            if (bytesRemainingInBlock < HEADER_SIZE ){
-            	this.mappedByteBuffer.put(new byte[bytesRemainingInBlock]);
+            int bytesRemainingInBlock = BLOCK_SIZE - blockOffset; // 计算当前block剩下的字节
+            Preconditions.checkState(bytesRemainingInBlock >= 0); 
+            if (bytesRemainingInBlock < HEADER_SIZE ){ // 如果当前block剩下的字节小于header_size = 7,则新开一个block,当前剩下字节填0
+            	this.mappedByteBuffer.put(new byte[bytesRemainingInBlock]);// 这种填充方法不安全.
             	blockOffset = 0;
                 bytesRemainingInBlock = BLOCK_SIZE - blockOffset;
             }
-            int bytesAvailableInBlock = bytesRemainingInBlock - HEADER_SIZE;
+            int bytesAvailableInBlock = bytesRemainingInBlock - HEADER_SIZE; // 重新计算当前block可用字段
             Preconditions.checkState(bytesAvailableInBlock >= 0);
             boolean end = false;
             int fragmentLength = 0;
             
-            if(sliceInput.available()>bytesAvailableInBlock){
+            if(sliceInput.available()>bytesAvailableInBlock){// 判断记录尚未读取的数据长度 > 当前block可用长度，则当前block不会结束
             	end = false;
             	fragmentLength = bytesAvailableInBlock;
             }
-            else {
-            	end = false;
+            else {// 判断记录尚未读取的数据长度 <= 当前block可用长度，则当前block结束
+            	end = true;
             	fragmentLength = sliceInput.available();
             }
-            // determine block type
+            /*
+             * 确定Recored Header段 Type的取值
+             */
             LogChunkType type;
             if (begin && end) {
                 type = LogChunkType.FULL;
