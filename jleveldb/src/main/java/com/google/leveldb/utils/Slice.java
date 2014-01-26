@@ -29,6 +29,9 @@ public final class Slice {
 		this.length = fragmentLength;
 	}
 
+	public Slice(int size) {
+		
+	}
 	public static Slice newLogHeaderSlice(int crc, Slice slice, LogChunkType type) {
 		ByteArrayDataOutput sliceOutput = ByteStreams
 				.newDataOutput(HEADER_SIZE);
