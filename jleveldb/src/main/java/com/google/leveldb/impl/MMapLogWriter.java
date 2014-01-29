@@ -22,7 +22,10 @@ import com.google.common.io.Files;
 import com.google.leveldb.LogChunkType;
 import com.google.leveldb.LogWriter;
 import com.google.leveldb.utils.Slice;
+import com.google.leveldb.utils.SliceDataInputStream;
+import com.google.leveldb.utils.Slices;
 import com.google.leveldb.Logs;
+
 import static com.google.leveldb.LogConstants.BLOCK_SIZE;
 import static com.google.leveldb.LogConstants.HEADER_SIZE;
 /**
@@ -35,7 +38,7 @@ public class MMapLogWriter implements LogWriter {
 	/*
 	 * 每次从LOG文件映射到内存的大小。ldb源码采用小于1M的时候，翻倍扩展的方式，32K,64K,128K...1M
 	 */
-	private final static int PAGE_SIZE = 1>>>20; // 1M
+	private final static int PAGE_SIZE = 1<<20; // 1M
 	/*
 	 * 从日志文件映射到内存的Buffer.每次大小为1M
 	 */
@@ -62,6 +65,7 @@ public class MMapLogWriter implements LogWriter {
 		this.fileChannel = new RandomAccessFile(file, "rw").getChannel();
 		mappedByteBuffer = fileChannel.map(MapMode.READ_WRITE, fileOffset, PAGE_SIZE);
 	}
+	
 	/**
 	 * 写入记录到日志系统。
 	 * 假设记录很大，每次从slice 里面读取不超过32K 的数据，然后写到处理后写到log中。
@@ -70,7 +74,7 @@ public class MMapLogWriter implements LogWriter {
 	public void addRecord(Slice record) throws IOException {
 		// used to track first, middle and last blocks
         boolean begin = true;
-        SliceDataInputStream sliceInput = new SliceDataInputStream(record);
+        SliceDataInputStream sliceInput = record.getInputStream();
         do {
             int bytesRemainingInBlock = BLOCK_SIZE - blockOffset; // 计算当前block剩下的字节
             Preconditions.checkState(bytesRemainingInBlock >= 0); 
@@ -116,36 +120,31 @@ public class MMapLogWriter implements LogWriter {
         }
         while(sliceInput.available()>0);
         sliceInput.close();
-            
 	}
 
 	private void writeLogChunk(LogChunkType type, Slice chunckSlice) {
-		// TODO Auto-generated method stub
 		Slice headerSlice = this.createLogRecordChunkHeader(type, chunckSlice);
 		this.mappedByteBuffer.put(headerSlice.getBytes());
 		this.mappedByteBuffer.put(chunckSlice.getBytes());
-		
-		
 	}
 	
 	private Slice createLogRecordChunkHeader(LogChunkType type, Slice slice)
     {
-		int crc = Logs.getChunkCheckSum(type.getTypeValue(), slice.getRawBytes(), slice.getRawOffset(), slice.length());
-        return Slice.newLogHeaderSlice(crc, slice,type);
+		int crc = Logs.getChunkCheckSum(type.getTypeValue(), slice.getBytes(), slice.getRawOffset(), slice.length());
+		logger.debug(crc);
+        return Slices.newLogHeaderSlice(crc, slice.length(),type);
     }
 	
-	
-
 	/**
 	 * @param args
 	 * @throws IOException 
 	 */
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
-		LogWriter logWriter = new  MMapLogWriter(new File("/home/weiminw/test.txt"),1);
-		File file = new File("/home/weiminw/velocity.log");
+		LogWriter logWriter = new  MMapLogWriter(new File("d:/home/weiminw/test.txt"),1);
+		Slice s = Slices.allocateLogSlice("abc".getBytes());
 		
-		logWriter.addRecord(Slice.of(Joiner.on(',').join(Files.readLines(file, Charsets.UTF_8))));
+		logWriter.addRecord(s);
 	}
 
 }

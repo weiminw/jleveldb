@@ -1,4 +1,4 @@
-package com.google.leveldb.impl;
+package com.google.leveldb.utils;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -7,6 +7,7 @@ import java.io.InputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.google.common.base.Preconditions;
 import com.google.leveldb.utils.Slice;
 
 public final class SliceDataInputStream extends InputStream implements
@@ -15,17 +16,14 @@ public final class SliceDataInputStream extends InputStream implements
 	private int position = 0;
 	private Logger logger = LogManager.getLogger(SliceDataInputStream.class);
 
+
 	public SliceDataInputStream(Slice slice) {
-		// TODO Auto-generated constructor stub
 		this.slice = slice;
 	}
 
 	@Override
 	public void readFully(byte[] b) throws IOException {
-		// TODO Auto-generated method stub
-		for (int i = 0; i < b.length; i++) {
-			b[i] = slice.getBytes()[this.position++];
-		}
+		System.arraycopy(this.slice.getRawBytes(), 0, b, 0, b.length);
 	}
 
 	@Override
@@ -125,8 +123,7 @@ public final class SliceDataInputStream extends InputStream implements
 	}
 
 	public Slice readSlice(int fragmentLength) {
-		// TODO Auto-generated method stub
-		Slice slice = this.slice.slice(this.position, fragmentLength);
+		Slice slice = this.slice.slice(position, fragmentLength);
 		this.position += fragmentLength;
 		return slice;
 
