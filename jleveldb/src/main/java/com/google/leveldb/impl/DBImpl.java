@@ -17,7 +17,7 @@ public class DBImpl implements DB {
 	private LogWriter logWriter;
 	private final ReentrantLock mutex = new ReentrantLock();
 	private MemTable memTable = new MemTableImpl();
-	private long sequence = 0; // sequence 统一管理
+	private long sequence = 0; /*@TODO sequence 统一管理*/
 	public DBImpl(){
 		try {
 			this.logWriter = new  MMapLogWriter(new File("d:/home/weiminw/test.txt"),1);
