@@ -1,14 +1,18 @@
 package com.google.leveldb.impl;
 
+import java.util.concurrent.ConcurrentSkipListMap;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.google.leveldb.MemTable;
+import com.google.leveldb.ValueType;
 import com.google.leveldb.WriteBatch.Handler;
 import com.google.leveldb.utils.Slice;
 
 public class MemTableImpl implements MemTable {
 	private static final Logger logger = LogManager.getLogger(MemTableImpl.class);
+	private final ConcurrentSkipListMap<InternalKey, Slice> table;
 	public static final class WriteBathAdd2MemTableHandler implements Handler{
 		private final MemTable memTable;
 		private long sequence = 0;
@@ -30,15 +34,18 @@ public class MemTableImpl implements MemTable {
 		
 		
 	}
+	public MemTableImpl() {
+		table = new ConcurrentSkipListMap<InternalKey, Slice>(new InternalKeyComparator());
+	}
 	@Override
 	public void add(long sequence, Slice key, Slice value) {
-		// TODO Auto-generated method stub
-		
+		InternalKey internalKey = new InternalKey(key,sequence,ValueType.VALUE);
+		this.table.put(internalKey, value);
 	}
 	@Override
 	public void remove(long sequence, Slice key) {
-		// TODO Auto-generated method stub
-		
+		InternalKey internalKey = new InternalKey(key,sequence,ValueType.DELETION);
+		this.table.put(internalKey, null);
 	}
 	
 

@@ -142,7 +142,7 @@ public class MMapLogWriter implements LogWriter {
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
 		LogWriter logWriter = new  MMapLogWriter(new File("d:/home/weiminw/test.txt"),1);
-		Slice s = Slices.allocateLogSlice("abc".getBytes());
+		Slice s = Slices.allocateSlice("abc".getBytes());
 		
 		logWriter.addRecord(s);
 	}

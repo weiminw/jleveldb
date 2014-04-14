@@ -28,9 +28,11 @@ import com.google.leveldb.WriteBatch.Handler;
 public final class Slices {
 	private static final Logger logger = LogManager.getLogger(Slices.class);
 
-	public static Slice allocateLogSlice(byte[] raw) {
-		// TODO Auto-generated method stub
+	public static Slice allocateSlice(byte[] raw) {
 		return Slice.of(raw);
+	}
+	public static Slice allocateSlice(int capicity) {
+		return Slice.of(new byte[capicity]);
 	}
 
 	public static Slice newLogHeaderSlice(int crc, int sliceLength, LogChunkType type){
